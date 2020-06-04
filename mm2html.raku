@@ -18,6 +18,26 @@ gather {
             tex: {packages: {'[+]': ['color']}}
           };
         </script>
+        <style>
+          /* TODO: This styling is pretty darn sucky. */
+          body {
+            margin-left: 100px;
+            margin-right: 100px;
+          }
+
+          b {
+            margin-left: 1.5em;
+          }
+
+          mjx-container {
+
+            margin-left: 5em;
+          }
+
+          p mjx-container {
+            margin-left: 0;
+          }
+        </style>
       </head>
   EOF
   for $parsed.assertions.kv -> $label, $assertion {
