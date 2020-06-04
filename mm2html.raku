@@ -22,13 +22,16 @@ gather {
   EOF
   for $parsed.assertions.kv -> $label, $assertion {
     take qq:to<EOF>;
-      <b>Assertion $label\</b>
-      <br>
-      {comment2html($assertion.comment)}
-      <br>
-      {mathify($assertion.statement)}
-      <br>
+      <p><b>Assertion $label.\</b>{comment2html($assertion.comment)}</p>
+      \\(
     EOF
+    if $assertion.essentials {
+      take $assertion.essentials.map({ mathify(.statement) })
+            .join('\quad\&\quad');
+      take '\quad\Rightarrow\quad';
+    }
+    take mathify($assertion.statement);
+    take '\)';
     next;
 # Proof steps take up too much MathJax power on the main page.
     next unless $assertion.proof_steps;

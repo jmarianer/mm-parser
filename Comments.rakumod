@@ -2,18 +2,19 @@ use Mathify;
 
 sub comment2html($comment) is export {
   my @para = $comment.split("\n\n");
-  gather {
-    for @para {
-      take '<p>';
+  @para.map({
+    gather {
       .comb(rx {
           | '$('
           | '$)'
           | '_' (.+?) '_'              { take "<i>$0\</i>" }
-          | '~' <ws> (<[\w._-]>+) <ws> { take $0 }
-          | '`' (.+?) '`'              { take mathify($0.trim.split(' ')) }
+          | '~' <ws> (<[\w._-]>+) <ws> { take "$0 " }
+          | '`' (.+?) '`'              { take '\(';
+                                         take mathify($0.trim.split(' '));
+                                         take '\)';
+                                       }
           | (.)                        { take $0 }
           });
-      take '</p>';
-    }
-  }.join();
+    }.join()
+  }).join('</p><p>');
 }

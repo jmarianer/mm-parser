@@ -126,6 +126,10 @@ class Assertion {
     }).flat;
   }
 
+  method essentials {
+    @!assumptions».value.grep: { .essential }
+  }
+
   method debug-print {
     print "  {$_.value.statement}\n" for @!assumptions;
     print "=>{@!statement}\n";
