@@ -24,6 +24,8 @@ my %tex-symbols =
   '&' => '\&',
   '=' => '=',
   '_G' => '\Gamma',
+  'A.' => '\forall',
+  'e.' => '\in',
 ;
 
 sub mathify(@symbols) is export {

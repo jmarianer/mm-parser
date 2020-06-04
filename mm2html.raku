@@ -40,24 +40,39 @@ gather {
         </style>
       </head>
   EOF
-  for $parsed.assertions.kv -> $label, $assertion {
-    take qq:to<EOF>;
-      <p><b>Assertion $label.\</b>{comment2html($assertion.comment)}</p>
-      \\(
-    EOF
-    if $assertion.essentials {
-      take $assertion.essentials.map({ mathify(.statement) })
-            .join('\quad\&\quad');
-      take '\quad\Rightarrow\quad';
+
+  # TODO: Get rid of kludge. There's a simple rule about headers between theorems that works well here.
+  # TODO: Rename $i
+  my $kludge = False;
+  my $i = 0;
+  for $parsed.comments-and-assertions -> $comment-or-label {
+    $kludge = True if $comment-or-label ~~ /"CLASSICAL FIRST-ORDER LOGIC WITH EQUALITY"/;
+    next unless $kludge;
+    if $comment-or-label ~~ /^<[\w._-]>+$/ {
+      # Assertion
+      last if $i++ > 100;
+      my $assertion = $parsed.assertions{$comment-or-label};
+      take qq:to<EOF>;
+        <p><b>Assertion <a href='#'>$comment-or-label\</a>.</b>
+        {comment2html($assertion.comment)}</p>
+        \\(
+      EOF
+      if $assertion.essentials {
+        take $assertion.essentials.map({ mathify(.statement) })
+              .join('\quad\&\quad');
+        take '\quad\Rightarrow\quad';
+      }
+      take mathify($assertion.statement);
+      take '\)';
+    } else {
+      # Comment
+      take comment2htmlfoo($comment-or-label);
     }
-    take mathify($assertion.statement);
-    take '\)';
-    next;
 # Proof steps take up too much MathJax power on the main page.
-    next unless $assertion.proof_steps;
-    for 1..* Z $assertion.proof_steps -> ($i, (@s, @b)) {
-      take "<tr><td>$i\</td><td>&nbsp;\\({mathify(@s)}\\) (by {@b})</td><tr>"
-    }
+#    next unless $assertion.proof_steps;
+#    for 1..* Z $assertion.proof_steps -> ($i, (@s, @b)) {
+#      take "<tr><td>$i\</td><td>&nbsp;\\({mathify(@s)}\\) (by {@b})</td><tr>"
+#    }
     
   }
   take "</body></html>";

@@ -1,5 +1,3 @@
-use ArrayHash;
-
 grammar Parser {
   rule TOP       { <ws> <decl> * }
   rule decl      { <const> | <var> |
@@ -143,11 +141,14 @@ class Assertion {
 
 class Actions {
   has Frame $.frame = Frame.new;
-  has ArrayHash $.assertions = array-hash;
+  has Assertion %.assertions;
   has Str $.latest_comment;
+
+  has @.comments-and-assertions;
 
   method comment($/) {
     $!latest_comment = ~$/;
+    @!comments-and-assertions.push(~$/);
   }
 
   method const($/) {
@@ -172,7 +173,8 @@ class Actions {
         comment => $!latest_comment,
         frame => $!frame,
         statement => ~«$<symbol>);
-    $!assertions{$<label>} = $assertion;
+    %!assertions{$<label>} = $assertion;
+    @!comments-and-assertions.push($<label>);
   }
   method theorem($/) {
     my $assertion = Assertion.new(
@@ -180,8 +182,9 @@ class Actions {
         frame => $!frame,
         statement => ~«$<symbol>,
         proof => $<proof>,
-        previous_statements => $!assertions);
-    $!assertions{$<label>} = $assertion;
+        previous_statements => %!assertions);
+    %!assertions{$<label>} = $assertion;
+    @!comments-and-assertions.push($<label>);
   }
 
   method push_fr($/) {

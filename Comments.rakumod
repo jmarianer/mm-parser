@@ -18,3 +18,18 @@ sub comment2html($comment) is export {
     }.join()
   }).join('</p><p>');
 }
+
+# TODO rename this sub
+sub comment2htmlfoo($comment) is export {
+  my $level = -1;
+  if $comment ~~ rx {
+    ^'$(' <ws> (
+    | '####' { $level = 1 }
+    | '#*#*' { $level = 2 }
+    | '=-=-' { $level = 3 }
+    | '-.-.' { $level = 4 }
+    ) .*?\n (.*?) \n $0.*?\n (.*)$
+  } {
+    return "<h$level>$1\</h$level><p>{ comment2html($2) }</p>";
+  }
+}
