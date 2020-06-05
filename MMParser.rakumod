@@ -57,6 +57,21 @@ class Frame {
   }
 }
 
+# TODO document
+sub decode_int(Str $encoded_int) {
+  my $ret = 0;
+  $encoded_int.comb(rx{
+    | <[A..T]> { $ret = $ret * 20 + ord($/) - ord('A') }
+    | <[U..Y]> { $ret = $ret *  5 + ord($/) - ord('T') } 
+  });
+  $ret;
+}
+# TODO move this test to a test file. Also, write a fucking test suite!
+# Test for decode_int:
+#   say qw/A B T UA UB UT VA VB YT UUA YYT UUUA/.map: &decode_int;
+# should be
+#   (0 1 19 20 21 39 40 41 119 120 619 620)
+
 # TODO:
 # Unify the names "assumptions" and "hypotheses" somehow, and make it a %.
 # Make proof_steps a class with statement, previous steps and inference statement
@@ -71,31 +86,31 @@ class Assertion {
     $!comment = $comment;
 
     my @frames = $frame.traverse.reverse;
-    my @hypotheses = @frames».hypotheses».Slip.flat;
+    my %all_hypotheses = @frames».hypotheses».Slip.flat;
 
     my @symbols = @!statement;
     @symbols.append(.value.statement)
-      for @hypotheses.grep: { $_.value.essential };
-    @hypotheses .= grep: {
+      for %all_hypotheses.grep: { $_.value.essential };
+    @!assumptions = %all_hypotheses.grep: {
       .value.essential or .value.var ∈ @symbols;
     }
 
-    @!assumptions = @hypotheses;
-
     if $proof {
       my @proof_statements = $proof<label>
-        ?? (%previous_statements{$proof<label>}:p)
+        ?? (%(|%all_hypotheses, |%previous_statements){$proof<label>}:p)
         !! [];
       @proof_statements.prepend(@!assumptions);
       
-      my @proof_letters = $proof<compressed>.comb(rx/<[A..Z]>/);
+      my @proof_ints = $proof<compressed>
+        .subst(rx/<ws>/, :g)
+        .comb(rx/<[U..Y]>*<[A..TZ]>/);
       my @stack = [];
 
-      for @proof_letters {
+      for @proof_ints {
         if $_ eq 'Z' {
           @proof_statements.push(@!proof_steps.elems => Essential.new(statement => @!proof_steps[*-1][0]));
         } else {
-          my $proof_int = ord($_) - ord('A');
+          my $proof_int = decode_int($_);
           my ($label, $statement) = @proof_statements[$proof_int].kv;
           if $statement ~~ Assertion {
             my $assumption_count = $statement.assumptions.elems;
