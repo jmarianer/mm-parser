@@ -5,8 +5,36 @@ use Comments;
 
 my $parsed = parse(slurp);
 
+for $parsed.assertions.kv -> $label, $theorem {
+  next unless $theorem.proof-steps;
 
-gather {
+  spurt "$label.html", gather {
+    take q:to<EOF>;
+      <html>
+        <head>
+          <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+          <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+          <script>
+            window.MathJax = {
+              loader: {load: ['[tex]/color']},
+              tex: {packages: {'[+]': ['color']}}
+            };
+          </script>
+        </head>
+        <body>
+    EOF
+    for ^Inf Z $theorem.proof-steps -> ($k, $v) {
+      take "$k. \\({mathify($v.expression)}\\) ({$v.ref}";
+      if $v.inputs {
+        take ", by {$v.inputs}";
+      }
+      take ")<br>";
+    }
+    take "</body></html>";
+  }.join;
+}
+
+spurt "output.html", gather {
   take q:to<EOF>;
     <html>
       <head>
@@ -39,6 +67,7 @@ gather {
           }
         </style>
       </head>
+      <body>
   EOF
 
   # TODO: Get rid of kludge. There's a simple rule about headers between theorems that works well here.
@@ -53,7 +82,7 @@ gather {
       last if $i++ > 100;
       my $assertion = $parsed.assertions{$comment-or-label};
       take qq:to<EOF>;
-        <p><b>Assertion <a href='#'>$comment-or-label\</a>.</b>
+        <p><b>Assertion <a href='$comment-or-label.html'>$comment-or-label\</a>.</b>
         {comment2html($assertion.comment)}</p>
         \\(
       EOF
@@ -76,5 +105,5 @@ gather {
     
   }
   take "</body></html>";
-}.join("\n").print;
+};
 

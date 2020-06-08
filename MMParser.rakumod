@@ -72,64 +72,80 @@ sub decode_int(Str $encoded_int) {
 # should be
 #   (0 1 19 20 21 39 40 41 119 120 619 620)
 
-# TODO:
-# Unify the names "assumptions" and "hypotheses" somehow, and make it a %.
-# Make proof_steps a class with statement, previous steps and inference statement
+class ProofStep {
+  has $.ref;
+  has @.inputs;
+  has $.expression;
+}
+
 class Assertion {
   has $.comment;
-  has @.assumptions;
+  has @.hypotheses;
   has @.statement;
-  has @.proof_steps;
+  has ProofStep @.proof-steps;
 
-  submethod BUILD(Str :$comment, Frame :$frame,
+  submethod BUILD(Str :$!comment, Frame :$frame,
                   :@!statement, :$proof, :%previous_statements) {
-    $!comment = $comment;
-
     my @frames = $frame.traverse.reverse;
-    my %all_hypotheses = @frames».hypotheses».Slip.flat;
+    my @all_hypotheses = @frames».hypotheses».Slip.flat;
 
     my @symbols = @!statement;
     @symbols.append(.value.statement)
-      for %all_hypotheses.grep: { $_.value.essential };
-    @!assumptions = %all_hypotheses.grep: {
+      for @all_hypotheses.grep: { $_.value.essential };
+    @!hypotheses = @all_hypotheses.grep: {
       .value.essential or .value.var ∈ @symbols;
     }
 
     if $proof {
-      my @proof_statements = $proof<label>
-        ?? (%(|%all_hypotheses, |%previous_statements){$proof<label>}:p)
-        !! [];
-      @proof_statements.prepend(@!assumptions);
-      
-      my @proof_ints = $proof<compressed>
-        .subst(rx/<ws>/, :g)
-        .comb(rx/<[U..Y]>*<[A..TZ]>/);
-      my @stack = [];
+      # TODO uncompressed proofs
+      self.decode_compressed_proof_steps(
+        %(|@all_hypotheses, |%previous_statements), $proof);
+    }
+  }
 
-      for @proof_ints {
-        if $_ eq 'Z' {
-          @proof_statements.push(@!proof_steps.elems => Essential.new(statement => @!proof_steps[*-1][0]));
+  method decode_compressed_proof_steps(%previous_statements, $proof) {
+    my @statements = $proof<label>
+      ?? (%previous_statements{$proof<label>}:p)
+      !! [];
+    @statements.prepend(@!hypotheses);
+
+    my @components = $proof<compressed>
+      .subst(rx/<ws>/, :g)
+      .comb(rx/<[U..Y]>*<[A..TZ]>/);
+    my @stack = [];
+
+    for @components {
+      if $_ eq 'Z' {
+        # Treat a "push" statement as if it's adding a new essential hypothesis.
+        # TODO: There has got to be a better way to do that.
+        @statements.push(
+          "Step {@!proof-steps.elems}" =>
+          Essential.new(statement => @!proof-steps[*-1][0].expression));
+      } else {
+        my ($label, $statement) = @statements[decode_int($_)].kv;
+        if $statement ~~ Assertion {
+          # Pop from the stack
+          my @inputs = @stack.splice(*-$statement.hypotheses.elems);
+          my @hypotheses = @!proof-steps[@inputs]».expression;
+
+          my $new-statement = $statement.substitute(@hypotheses);
+          @!proof-steps.push(ProofStep.new(
+            ref => $label,
+            inputs => (@inputs),
+            expression => $new-statement));
         } else {
-          my $proof_int = decode_int($_);
-          my ($label, $statement) = @proof_statements[$proof_int].kv;
-          if $statement ~~ Assertion {
-            my $assumption_count = $statement.assumptions.elems;
-            my @by = @stack.splice(*-$assumption_count);
-            my @assumptions = @!proof_steps[@by]»[0];
-            @!proof_steps.push(($statement.substitute(@assumptions),
-              (@by «+» 1).append($label)));
-          } else {
-            @!proof_steps.push(($statement.statement, [$label]));
-          }
-          @stack.push(@!proof_steps.elems - 1);
+          @!proof-steps.push(ProofStep.new(
+            ref => $label,
+            expression => $statement.statement));
         }
+        @stack.push(@!proof-steps.elems - 1);
       }
     }
   }
 
-  method substitute(@assumptions) {
+  method substitute(@hypotheses) {
     my %substitutions;
-    for @!assumptions».value Z @assumptions -> ($a, $b) {
+    for @!hypotheses».value Z @hypotheses -> ($a, $b) {
       unless $a.essential {
         %substitutions{$a.var} = $b[1..*].Array;
       }
@@ -140,15 +156,15 @@ class Assertion {
   }
 
   method essentials {
-    @!assumptions».value.grep: { .essential }
+    @!hypotheses».value.grep: { .essential }
   }
 
   method debug-print {
-    print "  {$_.value.statement}\n" for @!assumptions;
+    print "  {$_.value.statement}\n" for @!hypotheses;
     print "=>{@!statement}\n";
-    return unless @!proof_steps;
+    return unless @!proof-steps;
     print "Proof\n";
-    for 1..* Z @!proof_steps -> ($i, ($s, @b)) {
+    for 1..* Z @!proof-steps -> ($i, ($s, @b)) {
       print "  $i. $s (by {@b})\n"
     }
   }
