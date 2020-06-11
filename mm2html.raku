@@ -3,35 +3,14 @@ use MMParser;
 use Mathify;
 use Comments;
 
+use template-compiler 'mm2html.template';
+
 my $parsed = parse(slurp);
 
 for $parsed.assertions.kv -> $label, $theorem {
   next unless $theorem.proof-steps;
 
-  spurt "$label.html", gather {
-    take q:to<EOF>;
-      <html>
-        <head>
-          <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-          <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-          <script>
-            window.MathJax = {
-              loader: {load: ['[tex]/color']},
-              tex: {packages: {'[+]': ['color']}}
-            };
-          </script>
-        </head>
-        <body>
-    EOF
-    for ^Inf Z $theorem.proof-steps -> ($k, $v) {
-      take "$k. \\({mathify($v.expression)}\\) ({$v.ref}";
-      if $v.inputs {
-        take ", by {$v.inputs}";
-      }
-      take ")<br>";
-    }
-    take "</body></html>";
-  }.join;
+  spurt "$label.html", proof-html($theorem)
 }
 
 spurt "output.html", gather {

@@ -1,0 +1,17 @@
+$sub proof-html($theorem)
+  $use Mathify
+  <html>
+    <head>
+      <script src="https://polyfill.io/v3/polyfill.min.js?features=es6">
+      <script async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+      <script>
+        window.MathJax = \{
+          loader: \{load: ['[tex]/color']},
+          tex: \{packages: \{'[+]': ['color']}}
+        };
+    <body>
+      $for ^Inf Z $theorem.proof-steps -> ($k, $v)
+        {$k}. \\({mathify($v.expression)}\\) ({$v.ref}
+        $if $v.inputs
+          , by {$v.inputs}
+        )<br>

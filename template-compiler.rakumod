@@ -5,13 +5,17 @@ grammar LineParser {
     | <else>
     | <for>
     | <sub>
+    | <use>
     | <!before <[<$]>><text>
   }
 
   rule tag {
-    '<' $<tagname>=<ident> <attributes> '>'
+    '<' $<tagname>=<ident> <attribute> * '>'
   }
-  rule attributes { <-[>]>* }
+  rule attribute { <ident> '=' <value> }
+  rule value { '"' .* '"' }
+  # TODO Support escaped quotes ([<[^"]> | '\"'] or somesuch)
+  # TODO support `.class` and `#id` shorthands
 
   rule if {
     '$if' $<condition>=[.*]
@@ -22,13 +26,14 @@ grammar LineParser {
   }
 
   rule sub { '$sub' $<name>=[<ident> [<['\-]> <.ident>]*] $<sig>=[.*] }
+  rule use { '$use' $<name>=[.*] }
 
   rule text { .* }
 }
 
 class OpenActions {
   method tag($/) {
-    take "take '<$<tagname>>';";
+    take "take '<$<tagname> $<attribute>>';";
   }
 
   method text($/) {
@@ -47,6 +52,10 @@ class OpenActions {
 
   method sub($/) {
     take "'&$<name>' => sub $<sig> \{ gather \{";
+  }
+
+  method use($/) {
+    take "use $<name>;";
   }
 }
 
