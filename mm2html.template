@@ -24,3 +24,44 @@ $sub proof-html($theorem, @proof-steps-lite)
             $if $step.inputs
               , by {$step.inputs}
             )
+
+$sub index-page(@comments-and-labels, %assertions-hash)
+  $use Mathify
+  $use Comments
+  <html>
+    <head>
+      <script src="https://polyfill.io/v3/polyfill.min.js?features=es6">
+      <script async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+      <script>
+        window.MathJax = \{
+          loader: \{load: ['[tex]/color']},
+          tex: \{packages: \{'[+]': ['color']}}
+        };
+      <style>
+        /* TODO: This styling is pretty darn sucky. */
+        body \{
+          margin-left: 100px;
+          margin-right: 100px;
+        }
+        b \{
+          margin-left: 1.5em;
+        }
+        mjx-container \{
+          margin-left: 5em;
+        }
+        p mjx-container \{
+          margin-left: 0;
+        }
+    <body>
+      $for @comments-and-labels -> $cl
+        $if $cl ~~ /^<[\w._-]>+$/
+          <p>
+            <b>Assertion <a href='$cl.html'>$cl\</a>.
+            { comment2html(%assertions-hash{$cl}.comment) }
+          \\(
+          $if %assertions-hash{$cl}.essentials
+            { %assertions-hash{$cl}.essentials.map({ mathify(.value.statement) }).join('\quad\&\quad') }
+            \\quad\\Rightarrow\\quad
+          { mathify(%assertions-hash{$cl}.statement) }\\)
+        $else
+          { comment2htmlfoo($cl) }

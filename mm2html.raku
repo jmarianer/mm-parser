@@ -46,43 +46,10 @@ for $parsed.assertions.kv -> $label, $theorem {
   }
 }
 
-spurt "index.html", gather {
-  take q:to<EOF>;
-    <html>
-      <head>
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-        <script>
-          window.MathJax = {
-            loader: {load: ['[tex]/color']},
-            tex: {packages: {'[+]': ['color']}}
-          };
-        </script>
-        <style>
-          /* TODO: This styling is pretty darn sucky. */
-          body {
-            margin-left: 100px;
-            margin-right: 100px;
-          }
-
-          b {
-            margin-left: 1.5em;
-          }
-
-          mjx-container {
-
-            margin-left: 5em;
-          }
-
-          p mjx-container {
-            margin-left: 0;
-          }
-        </style>
-      </head>
-      <body>
-  EOF
-
-  # TODO: Get rid of kludge. There's a simple rule about headers between theorems that works well here.
+my @first100 = gather {
+  # Gather everything that needs to appear on the first page, for now.
+  # TODO: Get rid of kludge. There's a simple rule about headers between
+  # theorems that works well here.
   # TODO: Rename $i
   my $kludge = False;
   my $i = 0;
@@ -90,26 +57,11 @@ spurt "index.html", gather {
     $kludge = True if $comment-or-label ~~ /"CLASSICAL FIRST-ORDER LOGIC WITH EQUALITY"/;
     next unless $kludge;
     if $comment-or-label ~~ /^<[\w._-]>+$/ {
-      # Assertion
       last if $i++ >= 100;
-      my $assertion = $parsed.assertions{$comment-or-label};
-      take qq:to<EOF>;
-        <p><b>Assertion <a href='$comment-or-label.html'>$comment-or-label\</a>.</b>
-        {comment2html($assertion.comment)}</p>
-        \\(
-      EOF
-      if $assertion.essentials {
-        take $assertion.essentials.map({ mathify(.value.statement) })
-              .join('\quad\&\quad');
-        take '\quad\Rightarrow\quad';
-      }
-      take mathify($assertion.statement);
-      take '\)';
-    } else {
-      # Comment
-      take comment2htmlfoo($comment-or-label);
     }
-  }
-  take "</body></html>";
-};
 
+    take $comment-or-label;
+  }
+}
+
+spurt "index.html", index-page(@first100, $parsed.assertions);
