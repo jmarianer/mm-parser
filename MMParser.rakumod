@@ -156,7 +156,7 @@ class Assertion {
   }
 
   method essentials {
-    @!hypotheses».value.grep: { .essential }
+    @!hypotheses.grep: { .value.essential }
   }
 
   method debug-print {

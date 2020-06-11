@@ -1,4 +1,4 @@
-$sub proof-html($theorem)
+$sub proof-html($theorem, @proof-steps-lite)
   $use Mathify
   <html>
     <head>
@@ -10,8 +10,17 @@ $sub proof-html($theorem)
           tex: \{packages: \{'[+]': ['color']}}
         };
     <body>
-      $for ^Inf Z $theorem.proof-steps -> ($k, $v)
-        {$k}. \\({mathify($v.expression)}\\) ({$v.ref}
-        $if $v.inputs
-          , by {$v.inputs}
-        )<br>
+      $if $theorem.essentials
+        <h1>Hypotheses
+        $for $theorem.essentials -> $hypo
+          { $hypo.key }: \\({mathify($hypo.value.statement)}\\)<br>
+      <h1>Assertion
+      \\({mathify($theorem.statement)}\\)
+      <h1>Proof
+      <ol>
+        $for @proof-steps-lite -> $step
+          <li>
+            \\({mathify($step.expression)}\\) ({$step.ref}
+            $if $step.inputs
+              , by {$step.inputs}
+            )

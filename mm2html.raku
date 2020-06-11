@@ -5,15 +5,48 @@ use Comments;
 
 use template-compiler 'mm2html.template';
 
+class ProofStepLite is ProofStep {
+  has Int $.level;
+}
+
+sub proof-steps-lite(ProofStep @proof-steps) {
+  my ProofStepLite @ret;
+
+  sub pl-helper(Int $step-no, Int $level) {
+    my ProofStep $step := @proof-steps[$step-no];
+    next unless $step.expression[0] eq '|-';
+
+    my Int @inputs = gather {
+      for $step.inputs -> $i {
+        take pl-helper($i, $level + 1);
+      }
+    }
+
+    @ret.push: ProofStepLite.new(
+      expression => $step.expression,
+      inputs => @inputs,
+      ref => $step.ref,
+      level => $level,
+    );
+    @ret.elems;
+  }
+
+  pl-helper(@proof-steps.elems - 1, 0);
+  @ret;
+}
+
 my $parsed = parse(slurp);
 
 for $parsed.assertions.kv -> $label, $theorem {
-  next unless $theorem.proof-steps;
-
-  spurt "$label.html", proof-html($theorem)
+  if $theorem.proof-steps {
+    say $label;
+    spurt "$label.html", proof-html(
+      $theorem,
+      proof-steps-lite($theorem.proof-steps));
+  }
 }
 
-spurt "output.html", gather {
+spurt "index.html", gather {
   take q:to<EOF>;
     <html>
       <head>
@@ -58,7 +91,7 @@ spurt "output.html", gather {
     next unless $kludge;
     if $comment-or-label ~~ /^<[\w._-]>+$/ {
       # Assertion
-      last if $i++ > 100;
+      last if $i++ >= 100;
       my $assertion = $parsed.assertions{$comment-or-label};
       take qq:to<EOF>;
         <p><b>Assertion <a href='$comment-or-label.html'>$comment-or-label\</a>.</b>
@@ -66,7 +99,7 @@ spurt "output.html", gather {
         \\(
       EOF
       if $assertion.essentials {
-        take $assertion.essentials.map({ mathify(.statement) })
+        take $assertion.essentials.map({ mathify(.value.statement) })
               .join('\quad\&\quad');
         take '\quad\Rightarrow\quad';
       }
@@ -76,12 +109,6 @@ spurt "output.html", gather {
       # Comment
       take comment2htmlfoo($comment-or-label);
     }
-# Proof steps take up too much MathJax power on the main page.
-#    next unless $assertion.proof_steps;
-#    for 1..* Z $assertion.proof_steps -> ($i, (@s, @b)) {
-#      take "<tr><td>$i\</td><td>&nbsp;\\({mathify(@s)}\\) (by {@b})</td><tr>"
-#    }
-    
   }
   take "</body></html>";
 };
