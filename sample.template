@@ -1,0 +1,17 @@
+$sub some-method($pageTitle, @friends)
+  $doctype 5
+  <html>
+    <head>
+      <title>$pageTitle - My Site
+    <body>
+      <h1 .page-title>$pageTitle
+      <p>Here is a list of your friends:
+      $if @friends
+        <ul>
+          $for @friends -> $friend
+            <li>{$friend.name} ({$friend.age} years old)
+      $else
+        Sorry, I lied, you don't have any friends.
+
+$sub other-method
+  <html>
